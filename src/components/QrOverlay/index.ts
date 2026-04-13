@@ -1,0 +1,1 @@
+export { QrOverlay } from './QrOverlay'

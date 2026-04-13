@@ -1,0 +1,22 @@
+.qr-overlay {
+  position: absolute;
+  cursor: move;
+  border: 2px dashed #9c27b0;
+  padding: 4px;
+  background-color: #fff;
+  box-sizing: content-box;
+  z-index: 1000;
+  user-select: none;
+  touch-action: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.qr-overlay:hover {
+  border-color: #7b1fa2;
+}
+
+.qr-overlay.dragging {
+  border-color: #28a745;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+  cursor: grabbing;
+}

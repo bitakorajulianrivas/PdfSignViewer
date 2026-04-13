@@ -1,74 +1,64 @@
-import { useState, useRef, useCallback, useMemo } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
-import { QRCodeSVG } from 'qrcode.react'
-import { FaTrash, FaSave } from 'react-icons/fa'
-import 'react-pdf/dist/Page/AnnotationLayer.css'
-import 'react-pdf/dist/Page/TextLayer.css'
+import { useState, useRef, useMemo } from 'react'
+import { pdfjs } from 'react-pdf'
+import { ConfigModal } from './components'
+import { useDraggable } from './hooks/useDraggable'
+import { usePdfCoordinates } from './hooks/usePdfCoordinates'
+import { Position, Dimensions, ElementPosition } from './types'
+import {
+  DEFAULT_SIGNATURE_POSITION,
+  DEFAULT_QR_POSITION,
+  DEFAULT_SIGNATURE_DIMENSIONS,
+  QR_SIZE,
+  SIGNATURE_MAX_WIDTH,
+  SIGNATURE_MAX_HEIGHT,
+  SIGNATURE_SCALE_DEFAULT
+} from './constants'
 import './App.css'
 
 // Configure PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
 
-interface ElementPosition {
-  x: number
-  y: number
-  width: number
-  height: number
-  page: number
-}
-
-type DraggingElement = 'signature' | 'qr' | null
-
 function App() {
+  // PDF state
   const [pdfFile, setPdfFile] = useState<File | null>(null)
-  const [signatureImage, setSignatureImage] = useState<string | null>(null)
-  const [signaturePosition, setSignaturePosition] = useState({ x: 50, y: 50 })
-  const [signatureDimensions, setSignatureDimensions] = useState({ width: 150, height: 75 })
-  const [signatureScale, setSignatureScale] = useState(100)
-  const [originalSignatureDimensions, setOriginalSignatureDimensions] = useState({ width: 150, height: 75 })
-  const [savedSignaturePosition, setSavedSignaturePosition] = useState<ElementPosition | null>(null)
-
-  const [qrText, setQrText] = useState('')
-  const [qrPosition, setQrPosition] = useState({ x: 200, y: 50 })
-  const [savedQrPosition, setSavedQrPosition] = useState<ElementPosition | null>(null)
-  const qrSize = 50
-
-  const [draggingElement, setDraggingElement] = useState<DraggingElement>(null)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [pageInputValue, setPageInputValue] = useState('1')
 
+  // Signature state
+  const [signatureImage, setSignatureImage] = useState<string | null>(null)
+  const [signaturePosition, setSignaturePosition] = useState<Position>(DEFAULT_SIGNATURE_POSITION)
+  const [signatureDimensions, setSignatureDimensions] = useState<Dimensions>(DEFAULT_SIGNATURE_DIMENSIONS)
+  const [signatureScale, setSignatureScale] = useState(SIGNATURE_SCALE_DEFAULT)
+  const [originalSignatureDimensions, setOriginalSignatureDimensions] = useState<Dimensions>(DEFAULT_SIGNATURE_DIMENSIONS)
+  const [savedSignaturePosition, setSavedSignaturePosition] = useState<ElementPosition | null>(null)
+
+  // QR state
+  const [qrText, setQrText] = useState('')
+  const [qrPosition, setQrPosition] = useState<Position>(DEFAULT_QR_POSITION)
+  const [savedQrPosition, setSavedQrPosition] = useState<ElementPosition | null>(null)
+
+  // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
 
+  // Refs
   const pdfContainerRef = useRef<HTMLDivElement>(null)
 
-  // Standard PDF page dimensions (Letter size in points)
-  const pdfPageDimensions = { width: 612, height: 792 }
+  // Custom hooks
+  const { calculatePdfCoordinates } = usePdfCoordinates({
+    containerRef: pdfContainerRef,
+    currentPage
+  })
 
-  const calculatePdfCoordinates = useCallback((position: { x: number, y: number }, dimensions: { width: number, height: number }) => {
-    const container = pdfContainerRef.current
-    if (!container) return null
+  const { draggingElement, handleMouseDown, handleMouseMove, handleMouseUp } = useDraggable({
+    containerRef: pdfContainerRef,
+    signatureDimensions,
+    qrSize: QR_SIZE,
+    onSignatureMove: setSignaturePosition,
+    onQrMove: setQrPosition
+  })
 
-    const containerWidth = container.clientWidth
-    const containerHeight = container.clientHeight
-
-    const scaleX = pdfPageDimensions.width / containerWidth
-    const scaleY = pdfPageDimensions.height / containerHeight
-
-    const pdfX = position.x * scaleX
-    const elementHeightPdf = dimensions.height * scaleY
-    const pdfY = pdfPageDimensions.height - (position.y * scaleY) - elementHeightPdf
-
-    return {
-      x: Math.round(pdfX * 100) / 100,
-      y: Math.round(pdfY * 100) / 100,
-      width: Math.round(dimensions.width * scaleX),
-      height: Math.round(elementHeightPdf),
-      page: currentPage
-    }
-  }, [currentPage])
-
+  // Calculate coordinates
   const signatureCoordinates = useMemo(() => {
     if (!signatureImage) return null
     return calculatePdfCoordinates(signaturePosition, signatureDimensions)
@@ -76,9 +66,10 @@ function App() {
 
   const qrCoordinates = useMemo(() => {
     if (!qrText) return null
-    return calculatePdfCoordinates(qrPosition, { width: qrSize, height: qrSize })
+    return calculatePdfCoordinates(qrPosition, { width: QR_SIZE, height: QR_SIZE })
   }, [qrPosition, qrText, calculatePdfCoordinates])
 
+  // Handlers
   const handlePdfFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
@@ -94,7 +85,7 @@ function App() {
       const reader = new FileReader()
       reader.onload = (e) => {
         setSignatureImage(e.target?.result as string)
-        setSignaturePosition({ x: 50, y: 50 })
+        setSignaturePosition(DEFAULT_SIGNATURE_POSITION)
       }
       reader.readAsDataURL(file)
     }
@@ -102,24 +93,21 @@ function App() {
 
   const handleSignatureLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget
-    const maxWidth = 200
-    const maxHeight = 100
-
     let width = img.naturalWidth
     let height = img.naturalHeight
 
-    if (width > maxWidth) {
-      height = height * (maxWidth / width)
-      width = maxWidth
+    if (width > SIGNATURE_MAX_WIDTH) {
+      height = height * (SIGNATURE_MAX_WIDTH / width)
+      width = SIGNATURE_MAX_WIDTH
     }
-    if (height > maxHeight) {
-      width = width * (maxHeight / height)
-      height = maxHeight
+    if (height > SIGNATURE_MAX_HEIGHT) {
+      width = width * (SIGNATURE_MAX_HEIGHT / height)
+      height = SIGNATURE_MAX_HEIGHT
     }
 
     setOriginalSignatureDimensions({ width, height })
     setSignatureDimensions({ width, height })
-    setSignatureScale(100)
+    setSignatureScale(SIGNATURE_SCALE_DEFAULT)
   }
 
   const handleSignatureScaleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,45 +118,6 @@ function App() {
       height: (originalSignatureDimensions.height * scale) / 100
     })
   }
-
-  const handleMouseDown = useCallback((event: React.MouseEvent, element: DraggingElement) => {
-    event.preventDefault()
-    const rect = (event.target as HTMLElement).getBoundingClientRect()
-    setDragOffset({
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    })
-    setDraggingElement(element)
-  }, [])
-
-  const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if (!draggingElement || !pdfContainerRef.current) return
-
-    const container = pdfContainerRef.current
-    const containerRect = container.getBoundingClientRect()
-
-    let x = event.clientX - containerRect.left - dragOffset.x
-    let y = event.clientY - containerRect.top - dragOffset.y
-
-    const elementWidth = draggingElement === 'signature' ? signatureDimensions.width : qrSize
-    const elementHeight = draggingElement === 'signature' ? signatureDimensions.height : qrSize
-
-    const maxX = containerRect.width - elementWidth
-    const maxY = containerRect.height - elementHeight
-
-    x = Math.max(0, Math.min(x, maxX))
-    y = Math.max(0, Math.min(y, maxY))
-
-    if (draggingElement === 'signature') {
-      setSignaturePosition({ x, y })
-    } else if (draggingElement === 'qr') {
-      setQrPosition({ x, y })
-    }
-  }, [draggingElement, dragOffset, signatureDimensions])
-
-  const handleMouseUp = useCallback(() => {
-    setDraggingElement(null)
-  }, [])
 
   const handleDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setTotalPages(numPages)
@@ -205,13 +154,13 @@ function App() {
   const handleClearSignature = () => {
     setSignatureImage(null)
     setSavedSignaturePosition(null)
-    setSignaturePosition({ x: 50, y: 50 })
+    setSignaturePosition(DEFAULT_SIGNATURE_POSITION)
   }
 
   const handleClearQr = () => {
     setQrText('')
     setSavedQrPosition(null)
-    setQrPosition({ x: 200, y: 50 })
+    setQrPosition(DEFAULT_QR_POSITION)
   }
 
   return (
@@ -241,213 +190,40 @@ function App() {
         </div>
       )}
 
-      {/* Modal con visor completo */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal modal-fullscreen" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Configurar Firma y QR</h2>
-              <button className="modal-close" onClick={() => setIsModalOpen(false)}>×</button>
-            </div>
-
-            <div className="modal-content-wrapper">
-              {/* Panel lateral de controles */}
-              <div className="modal-sidebar">
-                <div className="modal-section">
-                  <div className="input-group">
-                    <label htmlFor="signatureInput">Cargar Firma:</label>
-                    <input
-                      type="file"
-                      id="signatureInput"
-                      accept="image/*"
-                      onChange={handleSignatureFileSelect}
-                    />
-                  </div>
-
-                  {signatureImage && (
-                    <div className="input-group">
-                      <label htmlFor="signatureScale">Tamaño: {signatureScale}%</label>
-                      <input
-                        type="range"
-                        id="signatureScale"
-                        min="25"
-                        max="200"
-                        value={signatureScale}
-                        onChange={handleSignatureScaleChange}
-                        className="scale-slider"
-                      />
-                    </div>
-                  )}
-
-                  {signatureImage && (
-                    <button className="clear-btn" onClick={handleClearSignature}>
-                      <FaTrash /> Quitar Firma
-                    </button>
-                  )}
-                </div>
-
-                <div className="modal-section">
-                  <div className="input-group">
-                    <label htmlFor="qrInput">Texto QR:</label>
-                    <input
-                      type="text"
-                      id="qrInput"
-                      value={qrText}
-                      onChange={(e) => setQrText(e.target.value)}
-                      placeholder="Ingrese texto para QR"
-                      className="qr-input"
-                    />
-                  </div>
-
-                  {qrText && (
-                    <button className="clear-btn" onClick={handleClearQr}>
-                      <FaTrash /> Quitar QR
-                    </button>
-                  )}
-                </div>
-
-                <div className="modal-section">
-                  <div className="page-controls">
-                    <label>Página:</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max={totalPages}
-                      value={pageInputValue}
-                      onChange={(e) => setPageInputValue(e.target.value)}
-                      onKeyDown={handlePageInputKeyDown}
-                      className="page-input"
-                    />
-                    <span className="page-total">de {totalPages}</span>
-                    <button className="go-btn" onClick={handleGoToPage}>
-                      Ir
-                    </button>
-                  </div>
-                </div>
-
-                {/* Coordenadas dentro del sidebar */}
-                {(signatureCoordinates || qrCoordinates) && (
-                  <div className="coordinates-display">
-                    <h4>Coordenadas actuales</h4>
-                    <div className="coords-sections">
-                      {signatureCoordinates && (
-                        <div className="coords-section">
-                          <h5>Firma</h5>
-                          <div className="coords-grid">
-                            <div className="coord-item">
-                              <span className="label">X:</span>
-                              <span className="value">{signatureCoordinates.x}</span>
-                            </div>
-                            <div className="coord-item">
-                              <span className="label">Y:</span>
-                              <span className="value">{signatureCoordinates.y}</span>
-                            </div>
-                            <div className="coord-item">
-                              <span className="label">Ancho:</span>
-                              <span className="value">{signatureCoordinates.width}</span>
-                            </div>
-                            <div className="coord-item">
-                              <span className="label">Alto:</span>
-                              <span className="value">{signatureCoordinates.height}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      {qrCoordinates && (
-                        <div className="coords-section">
-                          <h5>Código QR</h5>
-                          <div className="coords-grid">
-                            <div className="coord-item">
-                              <span className="label">X:</span>
-                              <span className="value">{qrCoordinates.x}</span>
-                            </div>
-                            <div className="coord-item">
-                              <span className="label">Y:</span>
-                              <span className="value">{qrCoordinates.y}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                      <div className="coords-section">
-                        <div className="coord-item">
-                          <span className="label">Página:</span>
-                          <span className="value">{currentPage}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="modal-actions">
-                  <button className="save-btn" onClick={handleSavePositions}>
-                    <FaSave /> Guardar Posiciones
-                  </button>
-                  <button className="cancel-btn" onClick={() => setIsModalOpen(false)}>
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-
-              {/* Visor del PDF */}
-              <div
-                className="modal-viewer"
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-              >
-                <div className="pdf-wrapper">
-                  <div className="pdf-object-container" ref={pdfContainerRef}>
-                    <Document
-                      file={pdfFile}
-                      onLoadSuccess={handleDocumentLoadSuccess}
-                      className="pdf-document"
-                    >
-                      <Page
-                        pageNumber={currentPage}
-                        width={pdfContainerRef.current?.clientWidth}
-                        renderTextLayer={false}
-                        renderAnnotationLayer={false}
-                        className="pdf-page"
-                      />
-                    </Document>
-
-                    {qrText && (
-                      <div
-                        className={`qr-overlay ${draggingElement === 'qr' ? 'dragging' : ''}`}
-                        style={{
-                          width: qrSize,
-                          height: qrSize,
-                          left: qrPosition.x,
-                          top: qrPosition.y
-                        }}
-                        onMouseDown={(e) => handleMouseDown(e, 'qr')}
-                      >
-                        <QRCodeSVG value={qrText} size={qrSize} />
-                      </div>
-                    )}
-
-                    {signatureImage && (
-                      <img
-                        src={signatureImage}
-                        alt="Firma"
-                        className={`signature-overlay ${draggingElement === 'signature' ? 'dragging' : ''}`}
-                        style={{
-                          width: signatureDimensions.width,
-                          height: signatureDimensions.height,
-                          left: signaturePosition.x,
-                          top: signaturePosition.y
-                        }}
-                        onLoad={handleSignatureLoad}
-                        onMouseDown={(e) => handleMouseDown(e, 'signature')}
-                        draggable={false}
-                      />
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {pdfFile && (
+        <ConfigModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          pdfFile={pdfFile}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          pageInputValue={pageInputValue}
+          containerRef={pdfContainerRef}
+          onDocumentLoadSuccess={handleDocumentLoadSuccess}
+          onPageInputChange={setPageInputValue}
+          onPageInputKeyDown={handlePageInputKeyDown}
+          onGoToPage={handleGoToPage}
+          signatureImage={signatureImage}
+          signaturePosition={signaturePosition}
+          signatureDimensions={signatureDimensions}
+          signatureScale={signatureScale}
+          onSignatureFileSelect={handleSignatureFileSelect}
+          onSignatureLoad={handleSignatureLoad}
+          onSignatureScaleChange={handleSignatureScaleChange}
+          onClearSignature={handleClearSignature}
+          qrText={qrText}
+          qrPosition={qrPosition}
+          qrSize={QR_SIZE}
+          onQrTextChange={setQrText}
+          onClearQr={handleClearQr}
+          signatureCoordinates={signatureCoordinates}
+          qrCoordinates={qrCoordinates}
+          draggingElement={draggingElement}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onSave={handleSavePositions}
+        />
       )}
     </div>
   )

@@ -1,0 +1,39 @@
+.pdf-viewer-area {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #525659;
+  overflow: auto;
+  padding: 20px;
+}
+
+.pdf-wrapper {
+  position: relative;
+  width: auto;
+  height: calc(95vh - 120px);
+  aspect-ratio: 8.5 / 11;
+}
+
+.pdf-object-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.pdf-document {
+  width: 100%;
+  height: 100%;
+}
+
+.pdf-page {
+  width: 100%;
+  height: 100%;
+}
+
+.pdf-page canvas {
+  width: 100% !important;
+  height: 100% !important;
+}

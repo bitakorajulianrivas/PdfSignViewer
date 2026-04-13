@@ -1,0 +1,57 @@
+.coordinates-display {
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.coordinates-display h4 {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #333;
+}
+
+.coordinates-display h5 {
+  margin: 0 0 5px 0;
+  font-size: 12px;
+  color: #666;
+}
+
+.coords-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coords-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.coords-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.coord-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.coord-item .label {
+  font-weight: 500;
+  color: #666;
+  font-size: 12px;
+}
+
+.coord-item .value {
+  font-family: monospace;
+  font-size: 12px;
+  color: #007bff;
+  background-color: #f0f7ff;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
