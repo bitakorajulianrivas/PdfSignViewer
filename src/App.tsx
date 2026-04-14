@@ -3,7 +3,7 @@ import { pdfjs } from 'react-pdf'
 import { ConfigModal } from './components'
 import { useDraggable } from './hooks/useDraggable'
 import { usePdfCoordinates } from './hooks/usePdfCoordinates'
-import { Position, Dimensions, ElementPosition } from './types'
+import { Position, Dimensions } from './types'
 import {
   DEFAULT_SIGNATURE_POSITION,
   DEFAULT_QR_POSITION,
@@ -27,16 +27,21 @@ function App() {
 
   // Signature state
   const [signatureImage, setSignatureImage] = useState<string | null>(null)
+  const [signatureVisible, setSignatureVisible] = useState(false)
+  const [signatureStamp, setSignatureStamp] = useState(false)
+  const [tsaLogin, setTsaLogin] = useState('')
+  const [tsaPassword, setTsaPassword] = useState('')
+  const [signatureCrl, setSignatureCrl] = useState(false)
   const [signaturePosition, setSignaturePosition] = useState<Position>(DEFAULT_SIGNATURE_POSITION)
   const [signatureDimensions, setSignatureDimensions] = useState<Dimensions>(DEFAULT_SIGNATURE_DIMENSIONS)
   const [signatureScale, setSignatureScale] = useState(SIGNATURE_SCALE_DEFAULT)
   const [originalSignatureDimensions, setOriginalSignatureDimensions] = useState<Dimensions>(DEFAULT_SIGNATURE_DIMENSIONS)
-  const [savedSignaturePosition, setSavedSignaturePosition] = useState<ElementPosition | null>(null)
+  const [savedConfig, setSavedConfig] = useState<object | null>(null)
 
   // QR state
   const [qrText, setQrText] = useState('')
+  const [qrVisible, setQrVisible] = useState(false)
   const [qrPosition, setQrPosition] = useState<Position>(DEFAULT_QR_POSITION)
-  const [savedQrPosition, setSavedQrPosition] = useState<ElementPosition | null>(null)
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -60,14 +65,14 @@ function App() {
 
   // Calculate coordinates
   const signatureCoordinates = useMemo(() => {
-    if (!signatureImage) return null
+    if (!signatureImage || !signatureVisible) return null
     return calculatePdfCoordinates(signaturePosition, signatureDimensions)
-  }, [signaturePosition, signatureDimensions, signatureImage, calculatePdfCoordinates])
+  }, [signaturePosition, signatureDimensions, signatureImage, signatureVisible, calculatePdfCoordinates])
 
   const qrCoordinates = useMemo(() => {
-    if (!qrText) return null
+    if (!qrText || !qrVisible) return null
     return calculatePdfCoordinates(qrPosition, { width: QR_SIZE, height: QR_SIZE })
-  }, [qrPosition, qrText, calculatePdfCoordinates])
+  }, [qrPosition, qrText, qrVisible, calculatePdfCoordinates])
 
   // Handlers
   const handlePdfFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,28 +144,39 @@ function App() {
   }
 
   const handleSavePositions = () => {
-    if (signatureCoordinates) {
-      setSavedSignaturePosition(signatureCoordinates)
-      console.log('Signature Position:', JSON.stringify(signatureCoordinates, null, 2))
+    const result = {
+      FirmaVisible: signatureVisible,
+      FirmarEstampa: signatureStamp,
+      FirmarCrl: signatureCrl,
+      LoginTSA: tsaLogin,
+      PasswordTSA: tsaPassword,
+      Imagen: signatureImage !== null && signatureVisible,
+      ImagenPosicionX: signatureCoordinates?.x ?? 0,
+      ImagenPosicionY: signatureCoordinates?.y ?? 0,
+      ImagenAncho: signatureCoordinates?.width ?? 0,
+      ImagenAlto: signatureCoordinates?.height ?? 0,
+      ImagenNumeroPagina: signatureCoordinates?.page ?? currentPage,
+      Qr: qrVisible && qrText !== '',
+      QrPosicionX: qrCoordinates?.x ?? 0,
+      QrPosicionY: qrCoordinates?.y ?? 0,
+      TextoQR: qrText
     }
-    if (qrCoordinates) {
-      const qrPositionSimple = { x: qrCoordinates.x, y: qrCoordinates.y, page: qrCoordinates.page }
-      setSavedQrPosition(qrPositionSimple as ElementPosition)
-      console.log('QR Position:', JSON.stringify(qrPositionSimple, null, 2))
-    }
+
+    console.log('Configuración guardada:', JSON.stringify(result, null, 2))
+    setSavedConfig(result)
     setIsModalOpen(false)
   }
 
   const handleClearSignature = () => {
     setSignatureImage(null)
-    setSavedSignaturePosition(null)
     setSignaturePosition(DEFAULT_SIGNATURE_POSITION)
+    setSignatureVisible(true)
   }
 
   const handleClearQr = () => {
     setQrText('')
-    setSavedQrPosition(null)
     setQrPosition(DEFAULT_QR_POSITION)
+    setQrVisible(true)
   }
 
   return (
@@ -183,10 +199,10 @@ function App() {
         )}
       </div>
 
-      {(savedSignaturePosition || savedQrPosition) && (
+      {savedConfig && (
         <div className="saved-position">
           <h3>Posiciones guardadas</h3>
-          <pre>{JSON.stringify({ signature: savedSignaturePosition, qr: savedQrPosition }, null, 2)}</pre>
+          <pre>{JSON.stringify(savedConfig, null, 2)}</pre>
         </div>
       )}
 
@@ -204,17 +220,29 @@ function App() {
           onPageInputKeyDown={handlePageInputKeyDown}
           onGoToPage={handleGoToPage}
           signatureImage={signatureImage}
+          signatureVisible={signatureVisible}
+          signatureStamp={signatureStamp}
+          tsaLogin={tsaLogin}
+          tsaPassword={tsaPassword}
+          signatureCrl={signatureCrl}
           signaturePosition={signaturePosition}
           signatureDimensions={signatureDimensions}
           signatureScale={signatureScale}
           onSignatureFileSelect={handleSignatureFileSelect}
+          onSignatureVisibleChange={setSignatureVisible}
+          onSignatureStampChange={setSignatureStamp}
+          onTsaLoginChange={setTsaLogin}
+          onTsaPasswordChange={setTsaPassword}
+          onSignatureCrlChange={setSignatureCrl}
           onSignatureLoad={handleSignatureLoad}
           onSignatureScaleChange={handleSignatureScaleChange}
           onClearSignature={handleClearSignature}
           qrText={qrText}
+          qrVisible={qrVisible}
           qrPosition={qrPosition}
           qrSize={QR_SIZE}
           onQrTextChange={setQrText}
+          onQrVisibleChange={setQrVisible}
           onClearQr={handleClearQr}
           signatureCoordinates={signatureCoordinates}
           qrCoordinates={qrCoordinates}

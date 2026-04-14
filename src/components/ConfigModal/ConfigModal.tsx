@@ -21,18 +21,30 @@ interface ConfigModalProps {
   onGoToPage: () => void
   // Signature props
   signatureImage: string | null
+  signatureVisible: boolean
+  signatureStamp: boolean
+  tsaLogin: string
+  tsaPassword: string
+  signatureCrl: boolean
   signaturePosition: Position
   signatureDimensions: Dimensions
   signatureScale: number
   onSignatureFileSelect: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onSignatureVisibleChange: (visible: boolean) => void
+  onSignatureStampChange: (stamp: boolean) => void
+  onTsaLoginChange: (value: string) => void
+  onTsaPasswordChange: (value: string) => void
+  onSignatureCrlChange: (crl: boolean) => void
   onSignatureLoad: (event: React.SyntheticEvent<HTMLImageElement>) => void
   onSignatureScaleChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   onClearSignature: () => void
   // QR props
   qrText: string
+  qrVisible: boolean
   qrPosition: Position
   qrSize: number
   onQrTextChange: (value: string) => void
+  onQrVisibleChange: (visible: boolean) => void
   onClearQr: () => void
   // Coordinates
   signatureCoordinates: ElementPosition | null
@@ -59,17 +71,29 @@ export const ConfigModal: FC<ConfigModalProps> = ({
   onPageInputKeyDown,
   onGoToPage,
   signatureImage,
+  signatureVisible,
+  signatureStamp,
+  tsaLogin,
+  tsaPassword,
+  signatureCrl,
   signaturePosition,
   signatureDimensions,
   signatureScale,
   onSignatureFileSelect,
+  onSignatureVisibleChange,
+  onSignatureStampChange,
+  onTsaLoginChange,
+  onTsaPasswordChange,
+  onSignatureCrlChange,
   onSignatureLoad,
   onSignatureScaleChange,
   onClearSignature,
   qrText,
+  qrVisible,
   qrPosition,
   qrSize,
   onQrTextChange,
+  onQrVisibleChange,
   onClearQr,
   signatureCoordinates,
   qrCoordinates,
@@ -93,59 +117,6 @@ export const ConfigModal: FC<ConfigModalProps> = ({
           {/* Panel lateral de controles */}
           <div className="modal-sidebar">
             <div className="modal-section">
-              <div className="input-group">
-                <label htmlFor="signatureInput">Cargar Firma:</label>
-                <input
-                  type="file"
-                  id="signatureInput"
-                  accept="image/*"
-                  onChange={onSignatureFileSelect}
-                />
-              </div>
-
-              {signatureImage && (
-                <div className="input-group">
-                  <label htmlFor="signatureScale">Tamaño: {signatureScale}%</label>
-                  <input
-                    type="range"
-                    id="signatureScale"
-                    min={SIGNATURE_SCALE_MIN}
-                    max={SIGNATURE_SCALE_MAX}
-                    value={signatureScale}
-                    onChange={onSignatureScaleChange}
-                    className="scale-slider"
-                  />
-                </div>
-              )}
-
-              {signatureImage && (
-                <button className="clear-btn" onClick={onClearSignature}>
-                  <FaTrash /> Quitar Firma
-                </button>
-              )}
-            </div>
-
-            <div className="modal-section">
-              <div className="input-group">
-                <label htmlFor="qrInput">Texto QR:</label>
-                <input
-                  type="text"
-                  id="qrInput"
-                  value={qrText}
-                  onChange={(e) => onQrTextChange(e.target.value)}
-                  placeholder="Ingrese texto para QR"
-                  className="qr-input"
-                />
-              </div>
-
-              {qrText && (
-                <button className="clear-btn" onClick={onClearQr}>
-                  <FaTrash /> Quitar QR
-                </button>
-              )}
-            </div>
-
-            <div className="modal-section">
               <div className="page-controls">
                 <label>Página:</label>
                 <input
@@ -162,6 +133,133 @@ export const ConfigModal: FC<ConfigModalProps> = ({
                   Ir
                 </button>
               </div>
+            </div>
+
+            <div className="modal-section">
+              <div className="input-group checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={signatureVisible}
+                    onChange={(e) => onSignatureVisibleChange(e.target.checked)}
+                  />
+                  Firma visible
+                </label>
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="signatureInput">Cargar Firma:</label>
+                <input
+                  type="file"
+                  id="signatureInput"
+                  accept="image/*"
+                  onChange={onSignatureFileSelect}
+                  disabled={!signatureVisible}
+                />
+              </div>
+
+              {signatureImage && signatureVisible && (
+                <div className="input-group">
+                  <label htmlFor="signatureScale">Tamaño: {signatureScale}%</label>
+                  <input
+                    type="range"
+                    id="signatureScale"
+                    min={SIGNATURE_SCALE_MIN}
+                    max={SIGNATURE_SCALE_MAX}
+                    value={signatureScale}
+                    onChange={onSignatureScaleChange}
+                    className="scale-slider"
+                  />
+                </div>
+              )}
+
+              {signatureImage && signatureVisible && (
+                <button className="clear-btn" onClick={onClearSignature}>
+                  <FaTrash /> Eliminar
+                </button>
+              )}
+
+              <hr className="section-divider" />
+
+              <div className="input-group checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={signatureStamp}
+                    onChange={(e) => onSignatureStampChange(e.target.checked)}
+                  />
+                  Firmar estampa
+                </label>
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="tsaLogin">Login TSA:</label>
+                <input
+                  type="text"
+                  id="tsaLogin"
+                  value={tsaLogin}
+                  onChange={(e) => onTsaLoginChange(e.target.value)}
+                  placeholder="Usuario TSA"
+                  className="tsa-input"
+                  disabled={!signatureStamp}
+                />
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="tsaPassword">Password TSA:</label>
+                <input
+                  type="password"
+                  id="tsaPassword"
+                  value={tsaPassword}
+                  onChange={(e) => onTsaPasswordChange(e.target.value)}
+                  placeholder="Contraseña TSA"
+                  className="tsa-input"
+                  disabled={!signatureStamp}
+                />
+              </div>
+
+              <div className="input-group checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={signatureCrl}
+                    onChange={(e) => onSignatureCrlChange(e.target.checked)}
+                  />
+                  Firmar CRL
+                </label>
+              </div>
+            </div>
+
+            <div className="modal-section">
+              <div className="input-group checkbox-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={qrVisible}
+                    onChange={(e) => onQrVisibleChange(e.target.checked)}
+                  />
+                  QR visible
+                </label>
+              </div>
+
+              <div className="input-group">
+                <label htmlFor="qrInput">Texto QR:</label>
+                <input
+                  type="text"
+                  id="qrInput"
+                  value={qrText}
+                  onChange={(e) => onQrTextChange(e.target.value)}
+                  placeholder="Ingrese texto para QR"
+                  className="qr-input"
+                  disabled={!qrVisible}
+                />
+              </div>
+
+              {qrText && qrVisible && (
+                <button className="clear-btn" onClick={onClearQr}>
+                  <FaTrash /> Eliminar
+                </button>
+              )}
             </div>
 
             <CoordinatesDisplay
@@ -186,11 +284,11 @@ export const ConfigModal: FC<ConfigModalProps> = ({
             currentPage={currentPage}
             containerRef={containerRef}
             onLoadSuccess={onDocumentLoadSuccess}
-            signatureImage={signatureImage}
+            signatureImage={signatureVisible ? signatureImage : null}
             signaturePosition={signaturePosition}
             signatureDimensions={signatureDimensions}
             onSignatureLoad={onSignatureLoad}
-            qrText={qrText}
+            qrText={qrVisible ? qrText : ''}
             qrPosition={qrPosition}
             qrSize={qrSize}
             draggingElement={draggingElement}

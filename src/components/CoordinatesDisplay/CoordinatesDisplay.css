@@ -5,10 +5,28 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.coordinates-display h4 {
-  margin: 0 0 8px 0;
+.coords-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  padding: 5px 0;
+}
+
+.coords-header:hover {
+  opacity: 0.8;
+}
+
+.coords-header h4 {
+  margin: 0;
   font-size: 13px;
   color: #333;
+}
+
+.coords-header svg {
+  font-size: 12px;
+  color: #666;
 }
 
 .coordinates-display h5 {

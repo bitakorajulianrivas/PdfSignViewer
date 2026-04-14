@@ -1,4 +1,5 @@
-import { FC } from 'react'
+import { FC, useState } from 'react'
+import { FaChevronDown, FaChevronRight } from 'react-icons/fa'
 import { ElementPosition } from '../../types'
 import './CoordinatesDisplay.css'
 
@@ -13,12 +14,24 @@ export const CoordinatesDisplay: FC<CoordinatesDisplayProps> = ({
   qrCoordinates,
   currentPage
 }) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+
   if (!signatureCoordinates && !qrCoordinates) return null
 
   return (
     <div className="coordinates-display">
-      <h4>Coordenadas actuales</h4>
+      <div className="coords-header" onClick={() => setIsExpanded(!isExpanded)}>
+        {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
+        <h4>Coordenadas actuales</h4>
+      </div>
+      {isExpanded && (
       <div className="coords-sections">
+        <div className="coords-section">
+          <div className="coord-item">
+            <span className="label">Página:</span>
+            <span className="value">{currentPage}</span>
+          </div>
+        </div>
         {signatureCoordinates && (
           <div className="coords-section">
             <h5>Firma</h5>
@@ -31,6 +44,8 @@ export const CoordinatesDisplay: FC<CoordinatesDisplayProps> = ({
                 <span className="label">Y:</span>
                 <span className="value">{signatureCoordinates.y}</span>
               </div>
+            </div>
+            <div className="coords-grid">
               <div className="coord-item">
                 <span className="label">Ancho:</span>
                 <span className="value">{signatureCoordinates.width}</span>
@@ -57,13 +72,8 @@ export const CoordinatesDisplay: FC<CoordinatesDisplayProps> = ({
             </div>
           </div>
         )}
-        <div className="coords-section">
-          <div className="coord-item">
-            <span className="label">Página:</span>
-            <span className="value">{currentPage}</span>
-          </div>
-        </div>
       </div>
+      )}
     </div>
   )
 }
