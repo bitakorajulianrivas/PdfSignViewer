@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useCallback } from 'react'
 import { pdfjs } from 'react-pdf'
 import { ConfigModal } from './components'
 import { useDraggable } from './hooks/useDraggable'
@@ -48,6 +48,7 @@ function App() {
 
   // Refs
   const pdfContainerRef = useRef<HTMLDivElement>(null)
+  const lastLoadedSignatureRef = useRef<string | null>(null)
 
   // Custom hooks
   const { calculatePdfCoordinates } = usePdfCoordinates({
@@ -96,7 +97,10 @@ function App() {
     }
   }
 
-  const handleSignatureLoad = (event: React.SyntheticEvent<HTMLImageElement>) => {
+  const handleSignatureLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
+    if (lastLoadedSignatureRef.current === signatureImage) return
+    lastLoadedSignatureRef.current = signatureImage
+
     const img = event.currentTarget
     let width = img.naturalWidth
     let height = img.naturalHeight
@@ -113,7 +117,7 @@ function App() {
     setOriginalSignatureDimensions({ width, height })
     setSignatureDimensions({ width, height })
     setSignatureScale(SIGNATURE_SCALE_DEFAULT)
-  }
+  }, [signatureImage])
 
   const handleSignatureScaleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const scale = parseInt(event.target.value, 10)
@@ -144,6 +148,13 @@ function App() {
   }
 
   const handleSavePositions = () => {
+    const currentSigCoords = (signatureImage && signatureVisible)
+      ? calculatePdfCoordinates(signaturePosition, signatureDimensions)
+      : null
+    const currentQrCoords = (qrText && qrVisible)
+      ? calculatePdfCoordinates(qrPosition, { width: QR_SIZE, height: QR_SIZE })
+      : null
+
     const result = {
       FirmaVisible: signatureVisible,
       FirmarEstampa: signatureStamp,
@@ -151,14 +162,14 @@ function App() {
       LoginTSA: tsaLogin,
       PasswordTSA: tsaPassword,
       Imagen: signatureImage !== null && signatureVisible,
-      ImagenPosicionX: signatureCoordinates?.x ?? 0,
-      ImagenPosicionY: signatureCoordinates?.y ?? 0,
-      ImagenAncho: signatureCoordinates?.width ?? 0,
-      ImagenAlto: signatureCoordinates?.height ?? 0,
-      ImagenNumeroPagina: signatureCoordinates?.page ?? currentPage,
+      ImagenPosicionX: currentSigCoords?.x ?? 0,
+      ImagenPosicionY: currentSigCoords?.y ?? 0,
+      ImagenAncho: currentSigCoords?.width ?? 0,
+      ImagenAlto: currentSigCoords?.height ?? 0,
+      ImagenNumeroPagina: currentSigCoords?.page ?? currentPage,
       Qr: qrVisible && qrText !== '',
-      QrPosicionX: qrCoordinates?.x ?? 0,
-      QrPosicionY: qrCoordinates?.y ?? 0,
+      QrPosicionX: currentQrCoords?.x ?? 0,
+      QrPosicionY: currentQrCoords?.y ?? 0,
       TextoQR: qrText
     }
 
@@ -168,6 +179,7 @@ function App() {
   }
 
   const handleClearSignature = () => {
+    lastLoadedSignatureRef.current = null
     setSignatureImage(null)
     setSignaturePosition(DEFAULT_SIGNATURE_POSITION)
     setSignatureVisible(true)
